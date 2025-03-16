@@ -21,17 +21,18 @@ unsigned char Uart_Recv_Index;//串口接收数据索引
 unsigned char ucRtc[3] = {23,59,6};//时钟数据
 unsigned int Slow_Down;//减速计时器
 bit Seg_Flag,Key_Flag,AD_Flag;//数码管和按键标志位
-unsigned char SegMode;
-unsigned int LightVolt;
-unsigned int RB2Volt;
-unsigned int LightVoltOld;
-unsigned int RB2VoltOld;
+unsigned char SegMode;//0-时间界面 1-数据界面 2-历史查询界面
+unsigned int LightVolt;//光敏电压值
+unsigned int RB2Volt;//RB2电压值
+unsigned int LightVoltOld;//上一次光敏电压值
+unsigned int RB2VoltOld;//上一次RB2电压值
 bit TrigFlag;//触发标志位
-unsigned char His_ucRtc[3][3] = {0};
-unsigned char ucRtcIndexW;
-unsigned char ucRtcIndexR;
-unsigned char TrigNum;
-unsigned char Num = 1;
+unsigned char His_ucRtc[3][3] = {0};//历史触发时间数组
+unsigned char ucRtcIndexW;//写入时间指针
+unsigned char ucRtcIndexR;//读取时间指针
+unsigned char TrigNum;//触发次数
+unsigned char Num;//历史查询界面索引值
+unsigned int Time_3000ms;//3秒计时数据
 
 
 
@@ -50,6 +51,12 @@ void Key_proc(void)
 	if(Key_Down == 4)
 	{
 		if(++SegMode == 3) SegMode = 0;
+		if(SegMode == 2) Num = 1;
+	}
+	if(Key_Down == 5)
+	{
+		if(--ucRtcIndexR == 255) ucRtcIndexR = 2;
+		if(++Num == 4) Num = 1;
 	}
 }
 
@@ -126,13 +133,13 @@ void Seg_proc(void)
 					Seg_Buf[0] = 11;
 					Seg_Buf[1] = Num;
 					Seg_Point[1] = 0;
-					Seg_Buf[2] = His_ucRtc[ucRtcIndexW][0] / 10 % 10;
-					Seg_Buf[3] = His_ucRtc[ucRtcIndexW][0] % 10;
-					Seg_Buf[4] = His_ucRtc[ucRtcIndexW][1] / 10 % 10;
-					Seg_Buf[5] = His_ucRtc[ucRtcIndexW][1] % 10;
+					Seg_Buf[2] = His_ucRtc[ucRtcIndexR][0] / 10 % 10;
+					Seg_Buf[3] = His_ucRtc[ucRtcIndexR][0] % 10;
+					Seg_Buf[4] = His_ucRtc[ucRtcIndexR][1] / 10 % 10;
+					Seg_Buf[5] = His_ucRtc[ucRtcIndexR][1] % 10;
 					Seg_Point[5] = 0;
-					Seg_Buf[6] = His_ucRtc[ucRtcIndexW][2] / 10 % 10;
-					Seg_Buf[7] = His_ucRtc[ucRtcIndexW][2] % 10;
+					Seg_Buf[6] = His_ucRtc[ucRtcIndexR][2] / 10 % 10;
+					Seg_Buf[7] = His_ucRtc[ucRtcIndexR][2] % 10;
 				}
 				else
 				{
@@ -161,10 +168,10 @@ void LED_Proc(void)
 	
 }	
 
-void AD_Read(void)
-{
-	
-}
+//void AD_Read(void)
+//{
+//	
+//}
 
 
 void Timer1_Init(void)		//1毫秒@12.000MHz
@@ -192,6 +199,16 @@ void Timer1_Isr(void) interrupt 3
 	{
 		Key_Flag = 0; // 更新按键处理标志位
 	}
+	if(TrigFlag)
+	{
+		if(++Time_3000ms == 3000)
+		{
+			Time_3000ms = 0;
+			TrigFlag = 0;
+			if(++ucRtcIndexW == 3) ucRtcIndexW = 0;
+			Num = 1;
+		}
+	}
 	
 	if(++Seg_Pos == 8) Seg_Pos = 0;//数码管显示专用
 	Seg_Disp(Seg_Pos,Seg_Buf[Seg_Pos],Seg_Point[Seg_Pos]);
@@ -214,6 +231,6 @@ void main()
 		Key_Proc();	 // 按键处理
 		Seg_Proc();	 // 数码管处理
 		Led_Proc();	 // led处理
-		AD_Read();
+//		AD_Read();
 	}
 }
