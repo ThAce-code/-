@@ -1,126 +1,199 @@
-/*Í·ÎÄ¼şÉùÃ÷Çø*/
-//°üº¬IICÍ¨ĞÅ,Onewire,³¬Éù²¨´«¸ĞÆ÷£¬¼üÅÌ£¬ÊıÂë¹Ü£¬´®¿ÚÍ¨ĞÅµÈ
-#include "Init.h"//ÏµÍ³³õÊ¼»¯
-#include "LED.h"//ledÇı¶¯
-#include "Key.h"//¾ØÕó¼üÅÌ
-#include "Seg.h"//ÊıÂë¹Ü
-#include "ds1302.h"//ÏµÍ³Ê±ÖÓ
-#include "iic.h"//IICÍ¨ĞÅ
+/*å¤´æ–‡ä»¶å£°æ˜åŒº*/
+//åŒ…å«IICé€šä¿¡,Onewire,è¶…å£°æ³¢ä¼ æ„Ÿå™¨ï¼Œé”®ç›˜ï¼Œæ•°ç ç®¡ï¼Œä¸²å£é€šä¿¡ç­‰
+#include "Init.h"//ç³»ç»Ÿåˆå§‹åŒ–
+#include "LED.h"//ledé©±åŠ¨
+#include "Key.h"//çŸ©é˜µé”®ç›˜
+#include "Seg.h"//æ•°ç ç®¡
+#include "ds1302.h"//ç³»ç»Ÿæ—¶é’Ÿ
+#include "iic.h"//IICé€šä¿¡
 #include "intrins.h"
 #include "STDIO.h"
 #include "STRING.h"
 
-/*±äÁ¿ÉùÃ÷Çø*/
-unsigned char Key_Val,Key_Down,Key_Old,Key_Up;//°´¼ü×´Ì¬±äÁ¿
-unsigned char Seg_Buf[8] = {10,10,10,10,10,10,10,10};//ÊıÂë¹ÜÏÔÊ¾Êı¾İ
-unsigned char Seg_Point[8] = {0,0,0,0,0,0,0,0};//ÊıÂë¹ÜĞ¡ÊıµãÊı¾İ
-unsigned char Seg_Pos;//ÊıÂë¹ÜÉ¨ÃèÎ»ÖÃ
+/*å˜é‡å£°æ˜åŒº*/
+unsigned char Key_Val,Key_Down,Key_Old,Key_Up;//æŒ‰é”®çŠ¶æ€å˜é‡
+unsigned char Seg_Buf[8] = {10,10,10,10,10,10,10,10};//æ•°ç ç®¡æ˜¾ç¤ºæ•°æ®
+unsigned char Seg_Point[8] = {0,0,0,0,0,0,0,0};//æ•°ç ç®¡å°æ•°ç‚¹æ•°æ®
+unsigned char Seg_Pos;//æ•°ç ç®¡æ‰«æä½ç½®
 unsigned char ucLed[8] = {0,0,0,0,0,0,0,0};//
-unsigned char Uart_Recv[10];//´®¿Ú½ÓÊÕÊı¾İ»º³åÇø
-unsigned char Uart_Recv_Index;//´®¿Ú½ÓÊÕÊı¾İË÷Òı
-unsigned char ucRtc[3] = {23,59,6};//Ê±ÖÓÊı¾İ
-unsigned int Slow_Down;//¼õËÙ¼ÆÊ±Æ÷
-bit Seg_Flag,Key_Flag,Uart_Flag;//ÊıÂë¹ÜºÍ°´¼ü±êÖ¾Î»
+unsigned char Uart_Recv[10];//ä¸²å£æ¥æ”¶æ•°æ®ç¼“å†²åŒº
+unsigned char Uart_Recv_Index;//ä¸²å£æ¥æ”¶æ•°æ®ç´¢å¼•
+unsigned char ucRtc[3] = {23,59,6};//æ—¶é’Ÿæ•°æ®
+unsigned int Slow_Down;//å‡é€Ÿè®¡æ—¶å™¨
+bit Seg_Flag,Key_Flag,AD_Flag;//æ•°ç ç®¡å’ŒæŒ‰é”®æ ‡å¿—ä½
 unsigned char SegMode;
 unsigned int LightVolt;
-unsigned int RB2Volt ;
+unsigned int RB2Volt;
+unsigned int LightVoltOld;
+unsigned int RB2VoltOld;
+bit TrigFlag;//è§¦å‘æ ‡å¿—ä½
+unsigned char His_ucRtc[3][3] = {0};
+unsigned char ucRtcIndexW;
+unsigned char ucRtcIndexR;
+unsigned char TrigNum;
+unsigned char Num = 1;
 
 
 
-/*¼üÅÌ´¦Àíº¯Êı*/
-//´¦Àí°´¼üÊäÈë£¬¼ì²â°´¼üÉÏÉıÑØºÍÏÂ½µÑØ£¬²¢¸üĞÂ°´¼ü×´Ì¬
+/*é”®ç›˜å¤„ç†å‡½æ•°*/
+//å¤„ç†æŒ‰é”®è¾“å…¥ï¼Œæ£€æµ‹æŒ‰é”®ä¸Šå‡æ²¿å’Œä¸‹é™æ²¿ï¼Œå¹¶æ›´æ–°æŒ‰é”®çŠ¶æ€
 void Key_proc(void)
 {
 	if(Key_Flag) return;
-	Key_Flag = 1; //ÉèÖÃ±êÖ¾Î»£¬·ÀÖ¹ÖØ¸´½øÈë
+	Key_Flag = 1; //è®¾ç½®æ ‡å¿—ä½ï¼Œé˜²æ­¢é‡å¤è¿›å…¥
 	
-	Key_Val = Key_Read(); //¶ÁÈ¡°´¼ü
-	Key_Down = Key_Val & (Key_Old ^ Key_Val);//¼ì²âÉÏÉıÑØ
-	Key_Up = ~Key_Val & (Key_Old ^ Key_Val);//¼ì²âÏÂ½µÑØ
-	Key_Old = Key_Val;//¸üĞÂ°´¼ü×´Ì¬
+	Key_Val = Key_Read(); //è¯»å–æŒ‰é”®
+	Key_Down = Key_Val & (Key_Old ^ Key_Val);//æ£€æµ‹ä¸Šå‡æ²¿
+	Key_Up = ~Key_Val & (Key_Old ^ Key_Val);//æ£€æµ‹ä¸‹é™æ²¿
+	Key_Old = Key_Val;//æ›´æ–°æŒ‰é”®çŠ¶æ€
 	
 	if(Key_Down == 4)
 	{
-		SegMode ^= 1;
+		if(++SegMode == 3) SegMode = 0;
 	}
 }
 
-/*ĞÅÏ¢´¦Àíº¯Êı*/
-//¸üĞÂÊıÂë¹ÜÏÔÊ¾Êı¾İ
+/*ä¿¡æ¯å¤„ç†å‡½æ•°*/
+//æ›´æ–°æ•°ç ç®¡æ˜¾ç¤ºæ•°æ®
 void Seg_proc(void)
 {
 	if(Seg_Flag) return;
-	Seg_Flag = 1;//ÉèÖÃ±êÖ¾Î»
+	Seg_Flag = 1;//è®¾ç½®æ ‡å¿—ä½
 	
 	Read_Rtc(ucRtc);
 	LightVolt = Ad_Read(0x43) * 100 / 51;
 	RB2Volt = Ad_Read(0x41) * 100 / 51;
-	switch(SegMode)
+	if(LightVoltOld >= RB2VoltOld)
 	{
-		case 0:
-			Seg_Buf[0] = ucRtc[0] / 10;
-			Seg_Buf[1] = ucRtc[0] % 10;
-			Seg_Buf[2] = 21;
-			Seg_Buf[3] = ucRtc[1] / 10;
-			Seg_Buf[4] = ucRtc[1] % 10;
-			Seg_Buf[5] = 21;
-			Seg_Buf[6] = ucRtc[2] / 10;
-			Seg_Buf[7] = ucRtc[2] % 10;
-		break;
-		case 1:
-			Seg_Buf[0] = 19;
-			Seg_Buf[1] = LightVolt / 100 % 10;
-			Seg_Point[1] = 1;
-			Seg_Buf[2] = LightVolt / 10 % 10;
-			Seg_Buf[3] = LightVolt % 10;
-			Seg_Buf[4] = 20;
-			Seg_Buf[5] = RB2Volt / 100 % 10;
-			Seg_Point[5] = 1;
-			Seg_Buf[6] = RB2Volt / 10 % 10;
-			Seg_Buf[7] = RB2Volt % 10;
-		break;
+		if(TrigFlag == 0)
+		{
+			if(LightVolt < RB2Volt)
+			{
+				TrigFlag = 1;
+				if(++TrigNum == 4) TrigNum = 3;
+				His_ucRtc[ucRtcIndexW][0] = ucRtc[0];
+				His_ucRtc[ucRtcIndexW][1] = ucRtc[1];
+				His_ucRtc[ucRtcIndexW][2] = ucRtc[2];
+				ucRtcIndexR = ucRtcIndexW;
+			}
+		}
 	}
+	LightVoltOld = LightVolt;
+	RB2VoltOld = RB2Volt;
+	if(TrigFlag)
+	{
+		Seg_Buf[0] = Seg_Buf[1] = 13;
+		Seg_Point[1] = 0;
+		Seg_Buf[2] = His_ucRtc[ucRtcIndexW][0] / 10 % 10;
+		Seg_Buf[3] = His_ucRtc[ucRtcIndexW][0] % 10;
+		Seg_Buf[4] = His_ucRtc[ucRtcIndexW][1] / 10 % 10;
+		Seg_Buf[5] = His_ucRtc[ucRtcIndexW][1] % 10;
+		Seg_Point[5] = 0;
+		Seg_Buf[6] = His_ucRtc[ucRtcIndexW][2] / 10 % 10;
+		Seg_Buf[7] = His_ucRtc[ucRtcIndexW][2] % 10;
+	}
+	else
+	{
+		switch(SegMode)
+	  {
+			case 0:
+				Seg_Buf[0] = ucRtc[0] / 10;
+				Seg_Buf[1] = ucRtc[0] % 10;
+				Seg_Point[1] = 0;
+				Seg_Buf[2] = 21;
+				Seg_Buf[3] = ucRtc[1] / 10;
+				Seg_Buf[4] = ucRtc[1] % 10;
+				Seg_Buf[5] = 21;
+				Seg_Point[5] = 0;
+				Seg_Buf[6] = ucRtc[2] / 10;
+				Seg_Buf[7] = ucRtc[2] % 10;
+			break;
+			case 1:
+				Seg_Buf[0] = 19;
+				Seg_Buf[1] = LightVolt / 100 % 10;
+				Seg_Point[1] = 1;
+				Seg_Buf[2] = LightVolt / 10 % 10;
+				Seg_Buf[3] = LightVolt % 10;
+				Seg_Buf[4] = 20;
+				Seg_Buf[5] = RB2Volt / 100 % 10;
+				Seg_Point[5] = 1;
+				Seg_Buf[6] = RB2Volt / 10 % 10;
+				Seg_Buf[7] = RB2Volt % 10;
+			break;
+			case 2:
+				if(TrigNum >= Num)
+				{
+					Seg_Buf[0] = 11;
+					Seg_Buf[1] = Num;
+					Seg_Point[1] = 0;
+					Seg_Buf[2] = His_ucRtc[ucRtcIndexW][0] / 10 % 10;
+					Seg_Buf[3] = His_ucRtc[ucRtcIndexW][0] % 10;
+					Seg_Buf[4] = His_ucRtc[ucRtcIndexW][1] / 10 % 10;
+					Seg_Buf[5] = His_ucRtc[ucRtcIndexW][1] % 10;
+					Seg_Point[5] = 0;
+					Seg_Buf[6] = His_ucRtc[ucRtcIndexW][2] / 10 % 10;
+					Seg_Buf[7] = His_ucRtc[ucRtcIndexW][2] % 10;
+				}
+				else
+				{
+					Seg_Buf[0] = 11;
+					Seg_Buf[1] = Num;
+					Seg_Point[1] = 0;
+					Seg_Buf[2] = 21;
+					Seg_Buf[3] = 21;
+					Seg_Buf[4] = 21;
+					Seg_Buf[5] = 21;
+					Seg_Point[5] = 0;
+					Seg_Buf[6] = 21;
+					Seg_Buf[7] = 21;
+				}
+			break;
+	  }
+	}
+	
 	
 }
 
-/*ÆäËüÏÔÊ¾º¯Êı*/
-//LEDÏÔÊ¾º¯Êı
+/*å…¶å®ƒæ˜¾ç¤ºå‡½æ•°*/
+//LEDæ˜¾ç¤ºå‡½æ•°
 void LED_Proc(void)
 {
 	
 }	
 
-
-
-
-
-void Timer1_Init(void)		//1ºÁÃë@12.000MHz
+void AD_Read(void)
 {
-	AUXR &= 0xBF;			//¶¨Ê±Æ÷Ê±ÖÓ12TÄ£Ê½
-	TMOD &= 0x0F;			//ÉèÖÃ¶¨Ê±Æ÷Ä£Ê½
-	TL1 = 0x18;				//ÉèÖÃ¶¨Ê±³õÊ¼Öµ
-	TH1 = 0xFC;				//ÉèÖÃ¶¨Ê±³õÊ¼Öµ
-	TF1 = 0;				//Çå³ıTF1±êÖ¾
-	TR1 = 1;				//¶¨Ê±Æ÷1¿ªÊ¼¼ÆÊ±
+	
+}
+
+
+void Timer1_Init(void)		//1æ¯«ç§’@12.000MHz
+{
+	AUXR &= 0xBF;			//å®šæ—¶å™¨æ—¶é’Ÿ12Tæ¨¡å¼
+	TMOD &= 0x0F;			//è®¾ç½®å®šæ—¶å™¨æ¨¡å¼
+	TL1 = 0x18;				//è®¾ç½®å®šæ—¶åˆå§‹å€¼
+	TH1 = 0xFC;				//è®¾ç½®å®šæ—¶åˆå§‹å€¼
+	TF1 = 0;				//æ¸…é™¤TF1æ ‡å¿—
+	TR1 = 1;				//å®šæ—¶å™¨1å¼€å§‹è®¡æ—¶
 	ET1 = 1;
 	EA = 1;
 }
 
 
-/*¶¨Ê±Æ÷1ÖĞ¶Ï·şÎñº¯Êı*/
-//¶¨Ê±Æ÷1µÄÖĞ¶Ï·şÎñº¯Êı£¬ÓÃÓÚ¸üĞÂÏµÍ³Ê±ÖÓ£¬´¦Àí°´¼üºÍÊıÂë¹ÜÏÔÊ¾
+/*å®šæ—¶å™¨1ä¸­æ–­æœåŠ¡å‡½æ•°*/
+//å®šæ—¶å™¨1çš„ä¸­æ–­æœåŠ¡å‡½æ•°ï¼Œç”¨äºæ›´æ–°ç³»ç»Ÿæ—¶é’Ÿï¼Œå¤„ç†æŒ‰é”®å’Œæ•°ç ç®¡æ˜¾ç¤º
 void Timer1_Isr(void) interrupt 3
 {
 	if (++Slow_Down == 10)
 	{
-		Seg_Flag = Slow_Down = 0; //¸üĞÂÊıÂë¹ÜÏÔÊ¾±êÖ¾Î»
+		Seg_Flag = Slow_Down = 0; //æ›´æ–°æ•°ç ç®¡æ˜¾ç¤ºæ ‡å¿—ä½
 	}
 	if (Slow_Down % 10 == 0)
 	{
-		Key_Flag = 0; // ¸üĞÂ°´¼ü´¦Àí±êÖ¾Î»
+		Key_Flag = 0; // æ›´æ–°æŒ‰é”®å¤„ç†æ ‡å¿—ä½
 	}
 	
-	if(++Seg_Pos == 8) Seg_Pos = 0;//ÊıÂë¹ÜÏÔÊ¾×¨ÓÃ
+	if(++Seg_Pos == 8) Seg_Pos = 0;//æ•°ç ç®¡æ˜¾ç¤ºä¸“ç”¨
 	Seg_Disp(Seg_Pos,Seg_Buf[Seg_Pos],Seg_Point[Seg_Pos]);
 	Led_Disp(Seg_Pos,ucLed[Seg_Pos]);
 	
@@ -129,17 +202,18 @@ void Timer1_Isr(void) interrupt 3
 
 
 
-/* Ö÷º¯Êı */
-// ÏµÍ³³õÊ¼»¯£¬ÉèÖÃ¶¨Ê±Æ÷ºÍ´®¿Ú
+/* ä¸»å‡½æ•° */
+// ç³»ç»Ÿåˆå§‹åŒ–ï¼Œè®¾ç½®å®šæ—¶å™¨å’Œä¸²å£
 void main()
 {
-	System_Init();	// ÏµÍ³³õÊ¼»¯
-	Timer1_Init();	// ¶¨Ê±Æ÷³õÊ¼»¯
-	Set_Rtc(ucRtc); // Ê±ÖÓ³õÊ¼»¯
+	System_Init();	// ç³»ç»Ÿåˆå§‹åŒ–
+	Timer1_Init();	// å®šæ—¶å™¨åˆå§‹åŒ–
+	Set_Rtc(ucRtc); // æ—¶é’Ÿåˆå§‹åŒ–
 	while (1)
 	{
-		Key_Proc();	 // °´¼ü´¦Àí
-		Seg_Proc();	 // ÊıÂë¹Ü´¦Àí
-		Led_Proc();	 // led´¦Àí
+		Key_Proc();	 // æŒ‰é”®å¤„ç†
+		Seg_Proc();	 // æ•°ç ç®¡å¤„ç†
+		Led_Proc();	 // ledå¤„ç†
+		AD_Read();
 	}
 }
