@@ -52,7 +52,7 @@ void Key_proc(void)
 	{
 		if(TrigFlag) return;
 		if(++SegMode == 3) SegMode = 0;
-		if(SegMode == 2) Index = 1;
+		if(SegMode == 2) Index = 1;       
 	}
 	if(Key_Down == 5)
 	{
@@ -63,7 +63,6 @@ void Key_proc(void)
 	if(Key_Down == 8)
 	{
 		if(SegMode != 2) return;
-		if()
 		TrigNum = 0;
 	}
 }
@@ -173,15 +172,17 @@ void Seg_proc(void)
 //LED显示函数
 void LED_Proc(void)
 {
-	unsigned char i;
-	for(i = 0;i < 3;i++)
-	{
-		ucLed[i] = (SegMode == i);
-	}
-	if(TrigFlag)
-	{
-		ucLed[7] = 1;
-	}
+	if (TrigFlag) {
+        ucLed[7] = 1;
+        ucLed[0] = 0;
+        ucLed[1] = 0;
+        ucLed[2] = 0;
+    } else {
+				ucLed[0] = (SegMode == 0)? 1: 0;
+        ucLed[1] = (SegMode == 1)? 1: 0;
+        ucLed[2] = (SegMode == 2)? 1: 0;
+        ucLed[7] = 0;
+    }
 }	
 
 //void AD_Read(void)
