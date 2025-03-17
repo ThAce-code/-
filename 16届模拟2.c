@@ -18,7 +18,7 @@ unsigned char Seg_Pos;//数码管扫描位置
 unsigned char ucLed[8] = {0,0,0,0,0,0,0,0};//
 unsigned char Uart_Recv[10];//串口接收数据缓冲区
 unsigned char Uart_Recv_Index;//串口接收数据索引
-unsigned char ucRtc[3] = {23,59,6};//时钟数据
+unsigned char ucRtc[3] = {23,59,50};//时钟数据
 unsigned int Slow_Down;//减速计时器
 bit Seg_Flag,Key_Flag,AD_Flag;//数码管和按键标志位
 unsigned char SegMode;//0-时间界面 1-数据界面 2-历史查询界面
@@ -31,7 +31,7 @@ unsigned char His_ucRtc[3][3] = {0};//历史触发时间数组
 unsigned char ucRtcIndexW;//写入时间指针
 unsigned char ucRtcIndexR;//读取时间指针
 unsigned char TrigNum;//触发次数
-unsigned char Num;//历史查询界面索引值
+unsigned char Index;//历史查询界面索引值
 unsigned int Time_3000ms;//3秒计时数据
 
 
@@ -50,13 +50,21 @@ void Key_proc(void)
 	
 	if(Key_Down == 4)
 	{
+		if(TrigFlag) return;
 		if(++SegMode == 3) SegMode = 0;
-		if(SegMode == 2) Num = 1;
+		if(SegMode == 2) Index = 1;
 	}
 	if(Key_Down == 5)
 	{
+		if(SegMode != 2) return;
 		if(--ucRtcIndexR == 255) ucRtcIndexR = 2;
-		if(++Num == 4) Num = 1;
+		if(++Index == 4) Index = 1;
+	}
+	if(Key_Down == 8)
+	{
+		if(SegMode != 2) return;
+		if()
+		TrigNum = 0;
 	}
 }
 
@@ -68,8 +76,8 @@ void Seg_proc(void)
 	Seg_Flag = 1;//设置标志位
 	
 	Read_Rtc(ucRtc);
-	LightVolt = Ad_Read(0x43) * 100 / 51;
-	RB2Volt = Ad_Read(0x41) * 100 / 51;
+	LightVolt = Ad_Read(0x03) * 100 / 51;
+	RB2Volt = Ad_Read(0x01) * 100 / 51;
 	if(LightVoltOld >= RB2VoltOld)
 	{
 		if(TrigFlag == 0)
@@ -77,7 +85,7 @@ void Seg_proc(void)
 			if(LightVolt < RB2Volt)
 			{
 				TrigFlag = 1;
-				if(++TrigNum == 4) TrigNum = 3;
+				if(++TrigNum == 6) TrigNum = 5;
 				His_ucRtc[ucRtcIndexW][0] = ucRtc[0];
 				His_ucRtc[ucRtcIndexW][1] = ucRtc[1];
 				His_ucRtc[ucRtcIndexW][2] = ucRtc[2];
@@ -128,10 +136,10 @@ void Seg_proc(void)
 				Seg_Buf[7] = RB2Volt % 10;
 			break;
 			case 2:
-				if(TrigNum >= Num)
+				if(TrigNum >= Index)
 				{
 					Seg_Buf[0] = 11;
-					Seg_Buf[1] = Num;
+					Seg_Buf[1] = Index;
 					Seg_Point[1] = 0;
 					Seg_Buf[2] = His_ucRtc[ucRtcIndexR][0] / 10 % 10;
 					Seg_Buf[3] = His_ucRtc[ucRtcIndexR][0] % 10;
@@ -144,7 +152,7 @@ void Seg_proc(void)
 				else
 				{
 					Seg_Buf[0] = 11;
-					Seg_Buf[1] = Num;
+					Seg_Buf[1] = Index;
 					Seg_Point[1] = 0;
 					Seg_Buf[2] = 21;
 					Seg_Buf[3] = 21;
@@ -165,7 +173,15 @@ void Seg_proc(void)
 //LED显示函数
 void LED_Proc(void)
 {
-	
+	unsigned char i;
+	for(i = 0;i < 3;i++)
+	{
+		ucLed[i] = (SegMode == i);
+	}
+	if(TrigFlag)
+	{
+		ucLed[7] = 1;
+	}
 }	
 
 //void AD_Read(void)
@@ -206,7 +222,8 @@ void Timer1_Isr(void) interrupt 3
 			Time_3000ms = 0;
 			TrigFlag = 0;
 			if(++ucRtcIndexW == 3) ucRtcIndexW = 0;
-			Num = 1;
+			Index = 1;
+			
 		}
 	}
 	
