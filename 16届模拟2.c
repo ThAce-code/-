@@ -84,7 +84,7 @@ void Seg_proc(void)
 			if(LightVolt < RB2Volt)
 			{
 				TrigFlag = 1;
-				if(++TrigNum == 6) TrigNum = 5;
+				if(++TrigNum == 4) TrigNum = 3;
 				His_ucRtc[ucRtcIndexW][0] = ucRtc[0];
 				His_ucRtc[ucRtcIndexW][1] = ucRtc[1];
 				His_ucRtc[ucRtcIndexW][2] = ucRtc[2];
@@ -178,7 +178,7 @@ void LED_Proc(void)
         ucLed[1] = 0;
         ucLed[2] = 0;
     } else {
-				ucLed[0] = (SegMode == 0)? 1: 0;
+		ucLed[0] = (SegMode == 0)? 1: 0;
         ucLed[1] = (SegMode == 1)? 1: 0;
         ucLed[2] = (SegMode == 2)? 1: 0;
         ucLed[7] = 0;
@@ -223,7 +223,6 @@ void Timer1_Isr(void) interrupt 3
 			Time_3000ms = 0;
 			TrigFlag = 0;
 			if(++ucRtcIndexW == 3) ucRtcIndexW = 0;
-			Index = 1;
 			
 		}
 	}
